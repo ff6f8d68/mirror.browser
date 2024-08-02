@@ -156,7 +156,7 @@
             </div>
             <div class="tabs">
                 <!-- Home Tab -->
-                <div class="tab active" data-url="/core/browser/home">
+                <div class="tab active" data-url="mirror://home">
                     <span class="tab-title">Home</span>
                     <button class="close-btn" title="Close Tab">&times;</button>
                 </div>
@@ -206,7 +206,7 @@
                 newTab.addEventListener('click', function() {
                     document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
                     newTab.classList.add('active');
-                    frame.src = url;
+                    updateIframeSource(url);
                     urlInput.value = url;
                 });
 
@@ -240,17 +240,25 @@
                 return url;
             }
 
+            function updateIframeSource(url) {
+                if (url === 'mirror://home') {
+                    frame.src = 'https://mirror-browser.netlify.app/page/?url=https://www.google.com/webhp?igu=1'; // Set your home page URL here
+                } else {
+                    const newUrl = `https://mirror-browser.netlify.app/page/?url=${encodeURIComponent(url)}`;
+                    frame.src = newUrl;
+                }
+            }
+
             function navigateToUrl() {
                 let url = urlInput.value.trim();
                 if (url) {
                     url = prependProtocol(url);
                     const activeTab = document.querySelector('.tab.active');
                     if (activeTab) {
-                        const newUrl = `https://mirror-browser.netlify.app/page/?url=${encodeURIComponent(url)}`;
-                        frame.src = newUrl;
-                        activeTab.setAttribute('data-url', newUrl);
+                        updateIframeSource(url);
+                        activeTab.setAttribute('data-url', url);
                     } else {
-                        frame.src = `https://mirror-browser.netlify.app/page/?url=${encodeURIComponent(url)}`;
+                        updateIframeSource(url);
                     }
                 }
             }
@@ -296,7 +304,7 @@
                 if (event.target.classList.contains('tab')) {
                     const url = event.target.getAttribute('data-url');
                     if (url) {
-                        frame.src = url;
+                        updateIframeSource(url);
                         urlInput.value = url;
                     }
                 }
