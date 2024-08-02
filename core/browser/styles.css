@@ -1,0 +1,137 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+}
+
+.browser {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+header {
+    background-color: #333;
+    color: #fff;
+    padding: 10px;
+    position: relative;
+}
+
+.url-bar {
+    display: flex;
+    align-items: center;
+    padding: 5px;
+}
+
+.url-bar button {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+.url-bar input {
+    flex: 1;
+    padding: 5px;
+    border: none;
+    border-radius: 5px;
+}
+
+.url-bar button#go-button {
+    background-color: #007bff;
+    color: #fff;
+    border-radius: 5px;
+    padding: 5px 10px;
+}
+
+.tabs {
+    display: flex;
+    align-items: center;
+    background-color: #444;
+    padding: 5px;
+    overflow-x: auto; /* Enable horizontal scrolling */
+    white-space: nowrap; /* Prevent wrapping of tabs */
+    box-sizing: border-box;
+}
+
+.tab {
+    display: inline-flex; /* Make tabs inline-flex to fit in the scroll container */
+    align-items: center;
+    background-color: #555;
+    color: #fff;
+    padding: 10px;
+    margin-right: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.tab.active {
+    background-color: #007bff;
+}
+
+.tab .close-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    margin-left: 10px;
+    padding: 0;
+}
+
+.tab .close-btn:hover {
+    color: #ff0000;
+}
+
+#new-tab-button {
+    background-color: #28a745;
+    color: #fff;
+    padding: 10px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+}
+
+.content {
+    flex: 1;
+    overflow: hidden;
+}
+
+.tab-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.settings-menu {
+    position: absolute;
+    top: 50px;
+    right: 10px;
+    background: #fff;
+    color: #000;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.settings-menu.hidden {
+    display: none;
+}
+
+.settings-menu button {
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+}
