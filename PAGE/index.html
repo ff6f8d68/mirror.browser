@@ -32,6 +32,17 @@
             const iframe = document.createElement('iframe');
             iframe.src = url;
             document.body.appendChild(iframe);
+
+            // Listen for messages from iframe
+            window.addEventListener('message', (event) => {
+                // Ensure the message is from the iframe
+                if (event.origin === new URL(url).origin) {
+                    const { title, icon } = event.data;
+                    document.title = title; // Update the page title
+                    // Optionally, you can log or use the icon URL as needed
+                    console.log('Icon:', icon);
+                }
+            });
         };
     </script>
 </body>
