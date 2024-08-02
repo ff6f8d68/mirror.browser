@@ -3,50 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iframe Loader</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-        }
-        iframe {
-            width: 100vw;
-            height: 100vh;
-            border: none;
-        }
-    </style>
+    <title>Mirror Browser Page</title>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Extract the URL from query parameters
+            const params = new URLSearchParams(window.location.search);
+            const targetUrl = params.get('url');
+            if (targetUrl) {
+                fetch(targetUrl)
+                    .then(response => response.text())
+                    .then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, 'text/html');
+                        
+                        // Extract title and favicon URL
+                        const title = doc.querySelector('title') ? doc.querySelector('title').innerText : 'Untitled';
+                        const iconLink = doc.querySelector('link[rel="icon"]') || doc.querySelector('link[rel="shortcut icon"]');
+                        const iconUrl = iconLink ? iconLink.href : '';
+
+                        // Redirect to URL with title and icon parameters
+                        const newUrl = `${targetUrl}?title=${encodeURIComponent(title)}&icon=${encodeURIComponent(iconUrl)}`;
+                        window.location = newUrl;
+                    });
+            }
+        });
+    </script>
 </head>
 <body>
-    <script>
-        window.onload = function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const url = urlParams.get('url');
-
-            if (!url) {
-                document.body.innerHTML = 'No URL specified in the query parameters.';
-                return;
-            }
-
-            // Create iframe and set its src attribute
-            const iframe = document.createElement('iframe');
-            iframe.src = url;
-            document.body.appendChild(iframe);
-
-            // Listen for messages from iframe
-            window.addEventListener('message', (event) => {
-                // Ensure the message is from the expected origin
-                if (event.origin === new URL(url).origin) {
-                    const data = event.data;
-                    if (data && typeof data.title === 'string') {
-                        document.title = data.title; // Update the page title
-                        console.log('Icon:', data.icon); // Optionally log or use the icon URL
-                    } else {
-                        console.error('Title is undefined or message format is incorrect');
-                    }
-                }
-            });
-        };
-    </script>
+    <!-- Content is loaded dynamically through JavaScript -->
 </body>
 </html>
