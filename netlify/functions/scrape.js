@@ -39,7 +39,7 @@ async function uploadDirectoryToGitHub(localDir, repoDir) {
     await uploadToGitHub(repoPath, fileContent, `Add ${relativePath}`);
   }
 }
-
+shell.exec("sudo apt-get install httrack")
 exports.handler = async (event, context) => {
   try {
     const url = event.queryStringParameters?.url;
