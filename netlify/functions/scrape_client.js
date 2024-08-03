@@ -10,34 +10,12 @@ async function saveContent(baseDir, fileName, content) {
   fs.writeFileSync(filePath, content);
 }
 
-async function saveAssets(driver, websiteUrl, baseDir) {
-  const assets = new Set();
-  
-  const assetUrls = await driver.findElements(By.css('img[src], link[href], script[src]'));
-  for (const asset of assetUrls) {
-    const url = await asset.getAttribute('src') || await asset.getAttribute('href');
-    if (url && url.startsWith('http')) {
-      assets.add(new URL(url, websiteUrl).href);
-    }
-  }
-
-  await Promise.all(Array.from(assets).map(async (assetUrl) => {
-    try {
-      const assetResponse = await axios.get(assetUrl, { responseType: 'arraybuffer' });
-      const assetName = path.basename(new URL(assetUrl).pathname);
-      await saveContent(baseDir, assetName, assetResponse.data);
-    } catch (assetError) {
-      console.error(`Failed to fetch asset ${assetUrl}:`, assetError.message);
-    }
-  }));
-}
-
 async function createZip(baseDir, outputFilePath) {
   const zip = new AdmZip();
   zip.addLocalFolder(baseDir);
   zip.writeZip(outputFilePath);
 }
-shell.exec("sudo apt-get install httrack")
+
 exports.handler = async (event, context) => {
   try {
     const url = event.queryStringParameters?.url;
@@ -53,11 +31,12 @@ exports.handler = async (event, context) => {
     const baseDir = path.join(__dirname, 'core', 'mirror', websiteName);
     const outputFilePath = path.join(__dirname, 'core', 'mirror', `${websiteName}.zip`);
 
-    // Run HTTrack to download the website
-    shell.exec(`httrack ${websiteUrl} -O ${baseDir} -v`);
+    // Run wget to download the website
+    const wgetCommand = `wget --mirror --convert-links --adjust-extension --page-requisites --no-parent --directory-prefix=${baseDir} ${websiteUrl}`;
+    const wgetResult = shell.exec(wgetCommand, { silent: false });
 
-    if (shell.error()) {
-      throw new Error('HTTrack failed');
+    if (wgetResult.code !== 0) {
+      throw new Error(`wget failed with code ${wgetResult.code}. Output: ${wgetResult.stderr}`);
     }
 
     // Create a ZIP file from the downloaded site
