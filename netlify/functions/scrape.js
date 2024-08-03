@@ -1,3 +1,4 @@
+const puppeteer = require('puppeteer');
 const axios = require('axios');
 const cheerio = require('cheerio');
 const path = require('path');
@@ -46,9 +47,13 @@ exports.handler = async (event, context) => {
     const websiteName = parse(websiteUrl).hostname.replace(/[^a-z0-9 .]/gi, '_').toLowerCase();
     const baseDir = `core/mirror/${websiteName}`;
 
-    // Fetch the website content
-    const response = await axios.get(websiteUrl);
-    let html = response.data;
+    // Launch Puppeteer
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.goto(websiteUrl, { waitUntil: 'networkidle2' });
+
+    // Get page content
+    let html = await page.content();
 
     // Sanitize HTML content
     html = sanitizeHtml(html, {
@@ -106,6 +111,8 @@ exports.handler = async (event, context) => {
       }
     }));
 
+    await browser.close();
+
     return {
       statusCode: 200,
       body: JSON.stringify({ message: 'Website saved successfully' }),
@@ -118,4 +125,3 @@ exports.handler = async (event, context) => {
     };
   }
 };
-window.location.replace(`https://mirror-browser.netlify.app/core/mirror/${websiteName}`)
