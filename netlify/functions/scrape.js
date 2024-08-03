@@ -1,17 +1,17 @@
-const $ = require('gee-shell');
-const axios = require('axios');
-const path = require('path');
-const { parse } = require('url');
-const { Buffer } = require('buffer');
+var $ = require('gee-shell');
+var axios = require('axios');
+var path = require('path');
+var { parse } = require('url');
+var { Buffer } = require('buffer');
 
 // GitHub repository information
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const REPO_OWNER = 'ff6f8d68';
-const REPO_NAME = 'mirror.browser';
-const BRANCH = 'main';
+var GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+var REPO_OWNER = 'ff6f8d68';
+var REPO_NAME = 'mirror.browser';
+var BRANCH = 'main';
 
 // Create GitHub API client
-const githubApi = axios.create({
+var githubApi = axios.create({
   baseURL: 'https://api.github.com',
   headers: {
     Authorization: `token ${GITHUB_TOKEN}`,
@@ -20,7 +20,7 @@ const githubApi = axios.create({
 });
 
 async function uploadToGitHub(pathInRepo, content, message) {
-  const { data: { sha } } = await githubApi.get(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${pathInRepo}?ref=${BRANCH}`).catch(() => ({ data: {} }));
+  var { data: { sha } } = await githubApi.get(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${pathInRepo}?ref=${BRANCH}`).catch(() => ({ data: {} }));
   
   await githubApi.put(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${pathInRepo}`, {
     message,
@@ -35,25 +35,25 @@ async function scrapeWebsite(websiteUrl, baseDir) {
   $.mkdir('-p', baseDir);
   
   // Use wget to mirror the website
-  const command = `wget --mirror --convert-links --directory-prefix=${baseDir} ${websiteUrl}`;
-  const result = $.exec(command);
+  var command = `wget --mirror --convert-links --directory-prefix=${baseDir} ${websiteUrl}`;
+  var result = $.exec(command);
   
   if (result.code !== 0) {
     throw new Error(`wget failed with code ${result.code}: ${result.stderr}`);
   }
   
   // List all files in the directory
-  const files = $.ls(`${baseDir}/**/*`);
-  for (const file of files) {
-    const content = $.cat(file).toString();
-    const relativePath = path.relative(baseDir, file);
+  var files = $.ls(`${baseDir}/**/*`);
+  for (var file of files) {
+    var content = $.cat(file).toString();
+    var relativePath = path.relative(baseDir, file);
     await uploadToGitHub(`core/mirror/${relativePath}`, content, `Add file ${relativePath}`);
   }
 }
 
-exports.handler = async (event, context) => {
+exports.handler = async function(event, context) {
   try {
-    const { websiteUrl } = event.queryStringParameters;
+    var { websiteUrl } = event.queryStringParameters;
     if (!websiteUrl) {
       return {
         statusCode: 400,
@@ -61,8 +61,8 @@ exports.handler = async (event, context) => {
       };
     }
 
-    const websiteName = parse(websiteUrl).hostname.replace(/[^a-z0-9 .]/gi, '_').toLowerCase();
-    const baseDir = `core/mirror/${websiteName}`;
+    var websiteName = parse(websiteUrl).hostname.replace(/[^a-z0-9 .]/gi, '_').toLowerCase();
+    var baseDir = `core/mirror/${websiteName}`;
 
     await scrapeWebsite(websiteUrl, baseDir);
 
