@@ -1,12 +1,38 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
 const path = require('path');
-const fs = require('fs').promises;
 const { parse } = require('url');
+
+// GitHub repository information
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+const REPO_OWNER = 'ff6f8d68'; // Replace with your GitHub username or organization
+const REPO_NAME = 'mirror.browser'; // Replace with your GitHub repository name
+const BRANCH = 'main'; // Replace with the branch you want to update
+
+// Create GitHub API client
+const githubApi = axios.create({
+  baseURL: 'https://api.github.com',
+  headers: {
+    Authorization: `token ${GITHUB_TOKEN}`,
+    'Content-Type': 'application/json',
+  },
+});
+
+async function uploadToGitHub(pathInRepo, content, message) {
+  // Get the SHA of the file (if exists) to update
+  const { data: { sha } } = await githubApi.get(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${pathInRepo}?ref=${BRANCH}`).catch(() => ({ data: {} }));
+  
+  // Create or update file
+  await githubApi.put(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${pathInRepo}`, {
+    message,
+    content: Buffer.from(content).toString('base64'),
+    sha,
+    branch: BRANCH
+  });
+}
 
 exports.handler = async (event, context) => {
   try {
-    // Get the website URL from query parameters
     const { websiteUrl } = event.queryStringParameters;
     if (!websiteUrl) {
       return {
@@ -15,44 +41,46 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Create a directory for storing the website content
-    const websiteName = parse(websiteUrl).hostname;
-    const saveDir = path.join('/tmp', websiteName); // Netlify functions use /tmp for temp files
-
-    // Ensure the directory exists
-    await fs.mkdir(saveDir, { recursive: true });
+    const websiteName = parse(websiteUrl).hostname.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const baseDir = `core/mirror/${websiteName}`;
 
     // Fetch the website content
     const response = await axios.get(websiteUrl);
     const html = response.data;
 
+    // Save the main HTML file to GitHub
+    await uploadToGitHub(`${baseDir}/index.html`, html, 'Add website index.html');
+
     // Parse the HTML content
     const $ = cheerio.load(html);
 
-    // Save the main HTML file
-    const htmlPath = path.join(saveDir, 'index.html');
-    await fs.writeFile(htmlPath, html, 'utf-8');
-
-    // Collect assets
+    // Collect asset URLs
     const assets = [];
     $('img[src], link[href], script[src]').each((i, el) => {
       const assetUrl = $(el).attr('src') || $(el).attr('href');
-      if (assetUrl) assets.push(new URL(assetUrl, websiteUrl).href);
+      if (assetUrl) {
+        const fullUrl = new URL(assetUrl, websiteUrl).href;
+        assets.push(fullUrl);
+      }
     });
 
-    // Download assets
+    // Download and save assets to GitHub
     await Promise.all(assets.map(async (assetUrl) => {
-      const assetResponse = await axios.get(assetUrl, { responseType: 'arraybuffer' });
-      const assetName = path.basename(new URL(assetUrl).pathname);
-      const assetPath = path.join(saveDir, assetName);
-      await fs.writeFile(assetPath, assetResponse.data);
+      try {
+        const assetResponse = await axios.get(assetUrl, { responseType: 'arraybuffer' });
+        const assetName = path.basename(new URL(assetUrl).pathname);
+        await uploadToGitHub(`${baseDir}/${assetName}`, assetResponse.data, `Add asset ${assetName}`);
+      } catch (assetError) {
+        console.error(`Failed to fetch asset ${assetUrl}:`, assetError.message);
+      }
     }));
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: 'Website saved successfully', saveDir }),
+      body: JSON.stringify({ message: 'Website saved successfully' }),
     };
   } catch (error) {
+    console.error('Error in function:', error.message);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: error.message }),
