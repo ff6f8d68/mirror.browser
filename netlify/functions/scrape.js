@@ -2,6 +2,8 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const path = require('path');
 const { parse } = require('url');
+const sanitizeHtml = require('sanitize-html');
+const { Buffer } = require('buffer');
 
 // GitHub repository information
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -46,10 +48,39 @@ exports.handler = async (event, context) => {
 
     // Fetch the website content
     const response = await axios.get(websiteUrl);
-    const html = response.data;
+    let html = response.data;
 
-    // Save the main HTML file to GitHub
-    await uploadToGitHub(`${baseDir}/index.html`, html, 'Add website index.html');
+    // Sanitize HTML content
+    html = sanitizeHtml(html, {
+      allowedTags: ['b', 'i', 'em', 'strong', 'a', 'p', 'img', 'br', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'div', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
+      allowedAttributes: {
+        'a': ['href', 'name', 'target'],
+        'img': ['src', 'alt', 'width', 'height'],
+        'span': ['style'],
+        'div': ['style'],
+        'table': ['style'],
+        'th': ['style'],
+        'td': ['style'],
+      },
+      allowedIframeHostnames: ['www.youtube.com'],
+      transformTags: {
+        'script': function(tagName, attribs) {
+          // Remove <script> tags or neutralize them
+          return { tagName: 'noscript', attribs: {} };
+        },
+        'style': function(tagName, attribs) {
+          // Remove <style> tags or neutralize them
+          return { tagName: 'noscript', attribs: {} };
+        },
+        'iframe': function(tagName, attribs) {
+          // Remove <iframe> tags or neutralize them
+          return { tagName: 'noscript', attribs: {} };
+        }
+      }
+    });
+
+    // Save the sanitized HTML file to GitHub
+    await uploadToGitHub(`${baseDir}/index.html`, html, 'Add sanitized website index.html');
 
     // Parse the HTML content
     const $ = cheerio.load(html);
