@@ -1,17 +1,15 @@
 const puppeteer = require('puppeteer');
 const axios = require('axios');
-const cheerio = require('cheerio');
 const path = require('path');
 const { parse } = require('url');
-const sanitizeHtml = require('sanitize-html');
 const { Buffer } = require('buffer');
-const fs = require('fs');
+const sanitizeHtml = require('sanitize-html');
 
 // GitHub repository information
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const REPO_OWNER = 'ff6f8d68'; // Replace with your GitHub username or organization
-const REPO_NAME = 'mirror.browser'; // Replace with your GitHub repository name
-const BRANCH = 'main'; // Replace with the branch you want to update
+const REPO_OWNER = 'ff6f8d68';
+const REPO_NAME = 'mirror.browser';
+const BRANCH = 'main';
 
 // Create GitHub API client
 const githubApi = axios.create({
@@ -23,24 +21,14 @@ const githubApi = axios.create({
 });
 
 async function uploadToGitHub(pathInRepo, content, message) {
-  // Get the SHA of the file (if exists) to update
   const { data: { sha } } = await githubApi.get(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${pathInRepo}?ref=${BRANCH}`).catch(() => ({ data: {} }));
   
-  // Create or update file
   await githubApi.put(`/repos/${REPO_OWNER}/${REPO_NAME}/contents/${pathInRepo}`, {
     message,
     content: Buffer.from(content).toString('base64'),
     sha,
     branch: BRANCH
   });
-}
-
-async function parseDataUrl(dataUrl) {
-  const matches = dataUrl.match(/^data:(.+);base64,(.+)$/);
-  if (matches.length !== 3) {
-    throw new Error('Could not parse data URL.');
-  }
-  return { mime: matches[1], buffer: Buffer.from(matches[2], 'base64') };
 }
 
 exports.handler = async (event, context) => {
@@ -58,7 +46,6 @@ exports.handler = async (event, context) => {
 
     // Launch Puppeteer
     const browser = await puppeteer.launch({
-      executablePath: process.env.CHROME_PATH || '/usr/bin/chromium-browser',
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
@@ -97,24 +84,7 @@ exports.handler = async (event, context) => {
     // Save the sanitized HTML file to GitHub
     await uploadToGitHub(`${baseDir}/index.html`, html, 'Add sanitized website index.html');
 
-    // Get and save GoJS diagram screenshot
-    const imageData = await page.evaluate(() => {
-      // Assuming window.myDiagram is available
-      if (window.myDiagram) {
-        window.myDiagram.animationManager.stopAnimation();
-        return window.myDiagram.makeImageData({
-          background: window.myDiagram.div.style.backgroundColor
-        });
-      }
-      return null;
-    });
-
-    if (imageData) {
-      const { buffer } = await parseDataUrl(imageData);
-      await uploadToGitHub(`${baseDir}/diagram-screenshot.png`, buffer, 'Add GoJS diagram screenshot');
-    }
-
-    // Get and save page screenshot
+    // Take a screenshot of the page
     const pageScreenshot = await page.screenshot({ type: 'png' });
     await uploadToGitHub(`${baseDir}/page-screenshot.png`, pageScreenshot, 'Add page screenshot');
 
@@ -122,7 +92,7 @@ exports.handler = async (event, context) => {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: 'Website and screenshots saved successfully' }),
+      body: JSON.stringify({ message: 'Website saved successfully' }),
     };
   } catch (error) {
     console.error('Error in function:', error.message);
