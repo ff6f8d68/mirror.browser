@@ -6,7 +6,8 @@
     "git": "^0.1.5",
     "puppeteer": "^22.15.0",
     "sanitize-html": "^2.13.0",
-    "selenium-webdriver": "^4.23.0"
+    "selenium-webdriver": "^4.23.0",
+    "shelljs": "^0.8.5"
   },
   "scripts": {
     "custom-build": "npx puppeteer install"
