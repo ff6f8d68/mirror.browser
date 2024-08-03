@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 url not mirrored</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        h1 {
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        .form-group button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .form-group button:hover {
+            background-color: #0056b3;
+        }
+        .message {
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Website Scraper</h1>
+        <form id="scrapeForm">
+            <div class="form-group">
+                <label for="url">Enter Website URL:</label>
+                <input type="text" id="url" name="url" placeholder="https://example.com" required>
+            </div>
+            <div class="form-group">
+                <button type="submit">Scrape and Save</button>
+            </div>
+        </form>
+        <div class="message" id="message"></div>
+    </div>
+
+    <script>
+        document.getElementById('scrapeForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const url = document.getElementById('url').value;
+            const messageDiv = document.getElementById('message');
+
+            if (!url) {
+                messageDiv.textContent = 'Please enter a valid URL.';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/scrape?websiteUrl=${encodeURIComponent(url)}`);
+                const result = await response.json();
+
+                if (response.ok) {
+                    messageDiv.textContent = 'Website scraped and saved successfully!';
+                } else {
+                    messageDiv.textContent = `Error: ${result.error}`;
+                }
+            } catch (error) {
+                messageDiv.textContent = `Error: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
