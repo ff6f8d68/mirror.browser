@@ -8,7 +8,6 @@
     "sanitize-html": "^2.13.0",
     "selenium-webdriver": "^4.23.0",
     "shelljs": "^0.8.5",
-	"gee-shell": "^0.0.1"
   },
   "scripts": {
     "custom-build": "npx puppeteer install"
