@@ -1,48 +1,50 @@
-const shell = require('shelljs');
-const path = require('path');
-const fs = require('fs');
-const AdmZip = require('adm-zip');
+var $ = require('gee-shell');
+var path = require('path');
+var { parse } = require('url');
+var AdmZip = require('adm-zip');
+var fs = require('fs');
 
-// Function to save HTML content and assets locally
-async function saveContent(baseDir, fileName, content) {
-  const filePath = path.join(baseDir, fileName);
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, content);
-}
-
+// Function to create a ZIP file from the directory
 async function createZip(baseDir, outputFilePath) {
-  const zip = new AdmZip();
+  var zip = new AdmZip();
   zip.addLocalFolder(baseDir);
   zip.writeZip(outputFilePath);
 }
 
-exports.handler = async (event, context) => {
+async function scrapeWebsite(websiteUrl, baseDir) {
+  // Ensure the base directory exists
+  $.mkdir('-p', baseDir);
+
+  // Use wget to mirror the website
+  var command = `wget --mirror --convert-links --directory-prefix=${baseDir} ${websiteUrl}`;
+  var result = $.exec(command);
+  
+  if (result.code !== 0) {
+    throw new Error(`wget failed with code ${result.code}: ${result.stderr}`);
+  }
+}
+
+exports.handler = async function(event, context) {
   try {
-    const url = event.queryStringParameters?.url;
-    if (!url) {
+    var { websiteUrl } = event.queryStringParameters;
+    if (!websiteUrl) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: 'Missing url parameter' }),
+        body: JSON.stringify({ error: 'Missing websiteUrl parameter' }),
       };
     }
 
-    const websiteUrl = decodeURIComponent(url);
-    const websiteName = new URL(websiteUrl).hostname.replace(/[^a-z0-9 .]/gi, '_').toLowerCase();
-    const baseDir = path.join(__dirname, 'core', 'mirror', websiteName);
-    const outputFilePath = path.join(__dirname, 'core', 'mirror', `${websiteName}.zip`);
+    var websiteName = parse(websiteUrl).hostname.replace(/[^a-z0-9 .]/gi, '_').toLowerCase();
+    var baseDir = path.join(__dirname, 'core', 'mirror', websiteName);
+    var outputFilePath = path.join(__dirname, 'core', 'mirror', `${websiteName}.zip`);
 
-    // Run wget to download the website
-    const wgetCommand = `wget --mirror --convert-links --adjust-extension --page-requisites --no-parent --directory-prefix=${baseDir} ${websiteUrl}`;
-    const wgetResult = shell.exec(wgetCommand, { silent: false });
+    // Clear the base directory
+    $.rm('-rf', baseDir);
 
-    if (wgetResult.code !== 0) {
-      throw new Error(`wget failed with code ${wgetResult.code}. Output: ${wgetResult.stderr}`);
-    }
-
-    // Create a ZIP file from the downloaded site
+    await scrapeWebsite(websiteUrl, baseDir);
     await createZip(baseDir, outputFilePath);
 
-    const zipContent = fs.readFileSync(outputFilePath);
+    var zipContent = fs.readFileSync(outputFilePath);
 
     return {
       statusCode: 200,
