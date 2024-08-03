@@ -1,6 +1,6 @@
-var $ = require('gee-shell');
-var axios = require('axios');
+var { exec } = require('child_process');
 var path = require('path');
+var axios = require('axios');
 var { parse } = require('url');
 var { Buffer } = require('buffer');
 
@@ -30,22 +30,28 @@ async function uploadToGitHub(pathInRepo, content, message) {
   });
 }
 
+async function runBashScript(websiteUrl, baseDir) {
+  return new Promise((resolve, reject) => {
+    var scriptPath = path.join(__dirname, 'scrape.sh');
+    var command = `bash ${scriptPath} ${websiteUrl} ${baseDir}`;
+    
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        return reject(new Error(`Bash script failed: ${stderr}`));
+      }
+      resolve(stdout);
+    });
+  });
+}
+
 async function scrapeWebsite(websiteUrl, baseDir) {
   // Ensure the base directory exists
-  $.mkdir('-p', baseDir);
-  
-  // Use wget to mirror the website
-  var command = `wget --mirror --convert-links --directory-prefix=${baseDir} ${websiteUrl}`;
-  var result = $.run(command);
-  
-  if (result.code !== 0) {
-    throw new Error(`wget failed with code ${result.code}: ${result.stderr}`);
-  }
+  await runBashScript(websiteUrl, baseDir);
   
   // List all files in the directory
-  var files = $.ls(`${baseDir}/**/*`);
+  var files = require('glob').sync(`${baseDir}/**/*`);
   for (var file of files) {
-    var content = $.cat(file).toString();
+    var content = require('fs').readFileSync(file).toString();
     var relativePath = path.relative(baseDir, file);
     await uploadToGitHub(`core/mirror/${relativePath}`, content, `Add file ${relativePath}`);
   }
