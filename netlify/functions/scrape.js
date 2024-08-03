@@ -39,7 +39,7 @@ async function uploadDirectoryToGitHub(localDir, repoDir) {
     await uploadToGitHub(repoPath, fileContent, `Add ${relativePath}`);
   }
 }
-shell.exec("sudo apt-get install httrack")
+
 exports.handler = async (event, context) => {
   try {
     const url = event.queryStringParameters?.url;
@@ -54,11 +54,12 @@ exports.handler = async (event, context) => {
     const websiteName = new URL(websiteUrl).hostname.replace(/[^a-z0-9 .]/gi, '_').toLowerCase();
     const outputDir = path.join(__dirname, 'core', 'mirror', websiteName);
 
-    // Run HTTrack to download the website
-    shell.exec(`httrack ${websiteUrl} -O ${outputDir} -v`);
+    // Run wget to download the website
+    const wgetCommand = `wget --mirror --convert-links --adjust-extension --page-requisites --no-parent --directory-prefix=${outputDir} ${websiteUrl}`;
+    const wgetResult = shell.exec(wgetCommand, { silent: false });
 
-    if (shell.error()) {
-      throw new Error('HTTrack failed');
+    if (wgetResult.code !== 0) {
+      throw new Error(`wget failed with code ${wgetResult.code}. Output: ${wgetResult.stderr}`);
     }
 
     // Upload the downloaded site to GitHub
