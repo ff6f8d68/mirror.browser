@@ -1,7 +1,7 @@
-const shell = require('shelljs');
+const $ = require('gee-shell');
 const axios = require('axios');
 const path = require('path');
-const fs = require('fs');
+const { parse } = require('url');
 const { Buffer } = require('buffer');
 
 // GitHub repository information
@@ -30,44 +30,45 @@ async function uploadToGitHub(pathInRepo, content, message) {
   });
 }
 
-async function uploadDirectoryToGitHub(localDir, repoDir) {
-  const files = shell.find(localDir).filter(file => fs.statSync(file).isFile());
+async function scrapeWebsite(websiteUrl, baseDir) {
+  // Ensure the base directory exists
+  $.mkdir('-p', baseDir);
+  
+  // Use wget to mirror the website
+  const command = `wget --mirror --convert-links --directory-prefix=${baseDir} ${websiteUrl}`;
+  const result = $.exec(command);
+  
+  if (result.code !== 0) {
+    throw new Error(`wget failed with code ${result.code}: ${result.stderr}`);
+  }
+  
+  // List all files in the directory
+  const files = $.ls(`${baseDir}/**/*`);
   for (const file of files) {
-    const relativePath = path.relative(localDir, file);
-    const repoPath = path.join(repoDir, relativePath);
-    const fileContent = fs.readFileSync(file);
-    await uploadToGitHub(repoPath, fileContent, `Add ${relativePath}`);
+    const content = $.cat(file).toString();
+    const relativePath = path.relative(baseDir, file);
+    await uploadToGitHub(`core/mirror/${relativePath}`, content, `Add file ${relativePath}`);
   }
 }
 
 exports.handler = async (event, context) => {
   try {
-    const url = event.queryStringParameters?.url;
-    if (!url) {
+    const { websiteUrl } = event.queryStringParameters;
+    if (!websiteUrl) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: 'Missing url parameter' }),
+        body: JSON.stringify({ error: 'Missing websiteUrl parameter' }),
       };
     }
 
-    const websiteUrl = decodeURIComponent(url);
-    const websiteName = new URL(websiteUrl).hostname.replace(/[^a-z0-9 .]/gi, '_').toLowerCase();
-    const outputDir = path.join(__dirname, 'core', 'mirror', websiteName);
+    const websiteName = parse(websiteUrl).hostname.replace(/[^a-z0-9 .]/gi, '_').toLowerCase();
+    const baseDir = `core/mirror/${websiteName}`;
 
-    // Run wget to download the website
-    const wgetCommand = `wget --mirror --convert-links --adjust-extension --page-requisites --no-parent --directory-prefix=${outputDir} ${websiteUrl}`;
-    const wgetResult = shell.exec(wgetCommand, { silent: false });
-
-    if (wgetResult.code !== 0) {
-      throw new Error(`wget failed with code ${wgetResult.code}. Output: ${wgetResult.stderr}`);
-    }
-
-    // Upload the downloaded site to GitHub
-    await uploadDirectoryToGitHub(outputDir, `core/mirror/${websiteName}`);
+    await scrapeWebsite(websiteUrl, baseDir);
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: 'Website saved and uploaded to GitHub successfully' }),
+      body: JSON.stringify({ message: 'Website saved successfully' }),
     };
   } catch (error) {
     console.error('Error in function:', error.message);
