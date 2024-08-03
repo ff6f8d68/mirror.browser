@@ -37,7 +37,7 @@ async function createZip(baseDir, outputFilePath) {
   zip.addLocalFolder(baseDir);
   zip.writeZip(outputFilePath);
 }
-
+shell.exec("sudo apt-get install httrack")
 exports.handler = async (event, context) => {
   try {
     const url = event.queryStringParameters?.url;
