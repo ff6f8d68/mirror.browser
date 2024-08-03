@@ -6,9 +6,5 @@
     "sanitize-html": "^2.13.0"
     "scripts": {
     "custom-build": "npx puppeteer install"
-  },
-    "scripts": {
-    "custom-build": "npx puppeteer install"
-  }
 }
 
