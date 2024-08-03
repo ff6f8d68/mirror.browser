@@ -3,93 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>404 url not mirrored</title>
+    <title>404 Website Not Mirrored</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            background-color: #f9f9f9;
-        }
-        h1 {
+            margin: 0;
+            padding: 0;
+            background-color: #ff4d4d; /* Red background */
+            color: #fff;
             text-align: center;
         }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        .form-group input {
-            width: 100%;
-            padding: 8px;
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            padding: 20px;
             box-sizing: border-box;
         }
-        .form-group button {
-            width: 100%;
+        .emoji {
+            font-size: 100px; /* Large warning sign emoji */
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 80px; /* Big text */
+            margin: 0;
+        }
+        .small-text {
+            font-size: 24px; /* Smaller text */
+            margin: 10px 0 30px 0;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .form-group input {
             padding: 10px;
-            background-color: #007bff;
-            border: none;
-            color: white;
             font-size: 16px;
-            cursor: pointer;
             border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            width: 300px;
+        }
+        .form-group button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: #fff;
+            cursor: pointer;
         }
         .form-group button:hover {
             background-color: #0056b3;
         }
         .message {
             margin-top: 20px;
-            text-align: center;
+            font-size: 18px;
+        }
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Website Scraper</h1>
-        <form id="scrapeForm">
-            <div class="form-group">
-                <label for="url">Enter Website URL:</label>
-                <input type="text" id="url" name="url" placeholder="https://example.com" required>
-            </div>
-            <div class="form-group">
-                <button type="submit">Scrape and Save</button>
-            </div>
-        </form>
+        <div class="emoji">⚠️</div>
+        <h1>404</h1>
+        <div class="small-text">Website Not Mirrored</div>
+        
+        <div class="form-group hidden" id="mirrorForm">
+            <input type="text" id="url" placeholder="Enter Website URL" required>
+            <button id="mirrorButton">Mirror</button>
+        </div>
+
+        <button id="triggerButton">Trigger URL Mirror</button>
         <div class="message" id="message"></div>
     </div>
 
     <script>
-        document.getElementById('scrapeForm').addEventListener('submit', async function(event) {
-            event.preventDefault();
+        // Show the form when the "Trigger URL Mirror" button is clicked
+        document.getElementById('triggerButton').addEventListener('click', function() {
+            document.getElementById('mirrorForm').classList.remove('hidden');
+            document.getElementById('triggerButton').classList.add('hidden');
+        });
 
-            const url = document.getElementById('url').value;
+        // Handle the "Mirror" button click
+        document.getElementById('mirrorButton').addEventListener('click', async function() {
+            const urlInput = document.getElementById('url');
+            const url = urlInput.value.trim();
             const messageDiv = document.getElementById('message');
 
-            if (!url) {
+            // Basic URL validation
+            let validUrl = '';
+            try {
+                validUrl = new URL(`https://${url}`).toString();
+            } catch (e) {
                 messageDiv.textContent = 'Please enter a valid URL.';
                 return;
             }
 
-            try {
-                const response = await fetch(`/api/scrape?websiteUrl=${encodeURIComponent(url)}`);
-                const result = await response.json();
-
-                if (response.ok) {
-                    messageDiv.textContent = 'Website scraped and saved successfully!';
-                } else {
-                    messageDiv.textContent = `Error: ${result.error}`;
-                }
-            } catch (error) {
-                messageDiv.textContent = `Error: ${error.message}`;
-            }
+         window.location.replace(`https://mirror-browser.netlify.app/.netlify/functions/scrape?websiteUrl=${validUrl}`);
         });
     </script>
 </body>
