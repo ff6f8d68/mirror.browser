@@ -5,7 +5,146 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mirror Browser</title>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Styles remain the same */
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+
+        .browser {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            background-color: #333;
+            color: #fff;
+            padding: 10px;
+            position: relative;
+        }
+
+        .url-bar {
+            display: flex;
+            align-items: center;
+            padding: 5px;
+        }
+
+        .url-bar button {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 16px;
+            margin-right: 5px;
+            cursor: pointer;
+        }
+
+        .url-bar input {
+            flex: 1;
+            padding: 5px;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .url-bar button#go-button {
+            background-color: #007bff;
+            color: #fff;
+            border-radius: 5px;
+            padding: 5px 10px;
+        }
+
+        .tabs {
+            display: flex;
+            align-items: center;
+            background-color: #444;
+            padding: 5px;
+            overflow-x: auto;
+            white-space: nowrap;
+            box-sizing: border-box;
+        }
+
+        .tab {
+            display: inline-flex;
+            align-items: center;
+            background-color: #555;
+            color: #fff;
+            padding: 10px;
+            margin-right: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .tab.active {
+            background-color: #007bff;
+        }
+
+        .tab .close-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+            margin-left: 10px;
+            padding: 0;
+        }
+
+        .tab .close-btn:hover {
+            color: #ff0000;
+        }
+
+        #new-tab-button {
+            background-color: #28a745;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .content {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .tab-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .settings-menu {
+            position: absolute;
+            top: 50px;
+            right: 10px;
+            background: #fff;
+            color: #000;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .settings-menu.hidden {
+            display: none;
+        }
+
+        .settings-menu button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
     <div class="browser">
@@ -19,8 +158,8 @@
             </div>
             <div class="tabs">
                 <!-- Home Tab -->
-                <div class="tab active" data-url="home.html">
-                    <span class="tab-title">Home</span>
+                <div class="tab active" data-url="https://mirror-browser.netlify.app/page/?url=https://www.google.com/webhp?igu=1" data-tab-id="tab1">
+                    <span class="tab-title">Google</span>
                     <button class="close-btn" title="Close Tab">&times;</button>
                 </div>
                 <!-- Other Tabs -->
@@ -35,9 +174,16 @@
         <div class="settings-menu hidden" id="settings-menu">
             <h2>Settings</h2>
             <label>
-                <input type="checkbox" id="dark-mode"> Dark Mode
+                Default URL:
+                <input type="text" id="default-url-input">
             </label>
-            <button id="close-settings">Close</button>
+            <div class="view-switch">
+                <label for="desktop-view" id="desktop-view" class="active">Desktop</label>
+                <label for="phone-view" id="phone-view">Phone</label>
+                <input type="radio" id="desktop-view" name="view" value="desktop">
+                <input type="radio" id="phone-view" name="view" value="phone">
+            </div>
+            <button id="save-settings">Save Settings</button>
         </div>
     </div>
     <script>
@@ -48,41 +194,39 @@
             const forwardButton = document.getElementById('forward-button');
             const settingsButton = document.getElementById('settings-button');
             const settingsMenu = document.getElementById('settings-menu');
-            const closeSettingsButton = document.getElementById('close-settings');
-            const darkModeCheckbox = document.getElementById('dark-mode');
-            const newTabButton = document.getElementById('new-tab-button');
+            const saveSettingsButton = document.getElementById('save-settings');
+            const defaultUrlInput = document.getElementById('default-url-input');
+            const viewLabels = document.querySelectorAll('.view-switch label');
+            const viewInputs = document.querySelectorAll('.view-switch input');
             const tabsContainer = document.querySelector('.tabs');
             const frame = document.querySelector('#browser-frame');
+            let currentView = 'desktop';
 
-            // Default URL
-            const defaultURL = 'https://mirror-browser.netlify.app/page/?url=https://www.google.com/webhp?igu=1';
-
-            function createNewTab(url = defaultURL) {
-                const tabCount = tabsContainer.querySelectorAll('.tab').length;
+            function createNewTab(url = '', title = 'New Tab', tabId = `tab${Date.now()}`) {
                 const newTab = document.createElement('div');
                 newTab.className = 'tab';
+                newTab.setAttribute('data-url', url);
+                newTab.setAttribute('data-tab-id', tabId);
                 newTab.innerHTML = `
-                    <span class="tab-title">Tab ${tabCount + 1}</span>
+                    <span class="tab-title">${title || 'New Tab'}</span>
                     <button class="close-btn" title="Close Tab">&times;</button>
                 `;
-                newTab.setAttribute('data-url', url);
                 newTab.addEventListener('click', function() {
                     document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
                     newTab.classList.add('active');
-                    frame.src = url;
-                    urlInput.value = url;
+                    updateIframeSource(url);
                 });
 
                 const closeButton = newTab.querySelector('.close-btn');
                 closeButton.addEventListener('click', function(event) {
-                    event.stopPropagation(); // Prevent tab click event
+                    event.stopPropagation();
                     if (tabsContainer.querySelectorAll('.tab').length > 1) {
                         const isActiveTab = newTab.classList.contains('active');
                         newTab.remove();
                         if (isActiveTab) {
                             const remainingTabs = tabsContainer.querySelectorAll('.tab');
                             if (remainingTabs.length > 0) {
-                                remainingTabs[0].click(); // Click the first tab if the active tab was closed
+                                remainingTabs[0].click();
                             }
                         }
                     } else {
@@ -90,120 +234,120 @@
                     }
                 });
 
-                tabsContainer.insertBefore(newTab, newTabButton);
+                tabsContainer.insertBefore(newTab, document.getElementById('new-tab-button'));
                 newTab.click();
+                saveTabsToCookie();
             }
 
-            createNewTab();
+            function updateIframeSource(url) {
+                frame.src = url;
+                urlInput.value = url;
+                saveTabsToCookie();
+            }
 
-            function prependProtocol(url) {
-                if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                    return 'https://' + url;
+            function loadSettings() {
+                fetch('/path/to/settings.json')
+                    .then(response => response.json())
+                    .then(settings => {
+                        defaultUrlInput.value = settings.defaultUrl || '';
+                        currentView = settings.view || 'desktop';
+                        document.querySelector(`input[value="${currentView}"]`).checked = true;
+                        document.getElementById(currentView + '-view').classList.add('active');
+                        applyView(currentView);
+                    });
+            }
+
+            function saveSettings() {
+                const settings = {
+                    defaultUrl: defaultUrlInput.value,
+                    view: currentView
+                };
+                fetch('/path/to/save-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                })
+                .then(response => response.json())
+                .then(() => alert('Settings saved successfully!'))
+                .catch(error => console.error('Error saving settings:', error));
+            }
+
+            function applyView(view) {
+                if (view === 'phone') {
+                    document.body.classList.add('phone-view');
+                } else {
+                    document.body.classList.remove('phone-view');
                 }
-                return url;
             }
 
-            function navigateToUrl() {
-                let url = urlInput.value.trim();
+            function saveTabsToCookie() {
+                const tabs = {};
+                document.querySelectorAll('.tab').forEach((tab, index) => {
+                    tabs[`tab${index + 1}`] = {
+                        tabname: tab.querySelector('.tab-title').textContent,
+                        taburl: tab.getAttribute('data-url')
+                    };
+                });
+                document.cookie = `tabs=${JSON.stringify(tabs)};path=/`;
+            }
+
+            function loadTabsFromCookie() {
+                const cookies = document.cookie.split(';').reduce((acc, cookie) => {
+                    const [name, value] = cookie.split('=');
+                    acc[name.trim()] = value;
+                    return acc;
+                }, {});
+                const tabs = JSON.parse(cookies.tabs || '{}');
+                Object.keys(tabs).forEach(tabId => {
+                    const tabData = tabs[tabId];
+                    createNewTab(tabData.taburl, tabData.tabname, tabId);
+                });
+            }
+
+            function handleUrlInput() {
+                const url = urlInput.value;
                 if (url) {
-                    url = prependProtocol(url);
-                    const activeTab = document.querySelector('.tab.active');
-                    if (activeTab) {
-                        const newUrl = `https://mirror-browser.netlify.app/page/?url=${encodeURIComponent(url)}`;
-                        frame.src = newUrl;
-                        activeTab.setAttribute('data-url', newUrl);
-                    } else {
-                        frame.src = `https://mirror-browser.netlify.app/page/?url=${encodeURIComponent(url)}`;
-                    }
+                    const newUrl = `https://mirror-browser.netlify.app/page/?url=${encodeURIComponent(url)}`;
+                    updateIframeSource(newUrl);
                 }
             }
 
-            goButton.addEventListener('click', navigateToUrl);
-
-            urlInput.addEventListener('keypress', function(event) {
-                if (event.key === 'Enter') {
-                    navigateToUrl();
-                    event.preventDefault(); // Prevent the default action to avoid form submission
+            urlInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    handleUrlInput();
                 }
             });
 
-            urlInput.addEventListener('click', function() {
-                urlInput.select(); // Select all text in the input field
-            });
+            goButton.addEventListener('click', handleUrlInput);
 
             backButton.addEventListener('click', function() {
-                document.querySelector('#browser-frame').contentWindow.history.back();
+                frame.contentWindow.history.back();
             });
 
             forwardButton.addEventListener('click', function() {
-                document.querySelector('#browser-frame').contentWindow.history.forward();
+                frame.contentWindow.history.forward();
             });
 
             settingsButton.addEventListener('click', function() {
-                settingsMenu.classList.toggle('hidden');
-            });
-
-            closeSettingsButton.addEventListener('click', function() {
-                settingsMenu.classList.add('hidden');
-            });
-
-            darkModeCheckbox.addEventListener('change', function() {
-                document.body.classList.toggle('dark-mode', darkModeCheckbox.checked);
+                createNewTab('https://mirror-browser.netlify.app/page/?url=https://mirror-browser.netlify.app/browser/core/home/settings.html', 'mirror://settings');
             });
 
             newTabButton.addEventListener('click', function() {
                 createNewTab();
             });
 
-            tabsContainer.addEventListener('click', function(event) {
-                if (event.target.classList.contains('tab')) {
-                    const url = event.target.getAttribute('data-url');
-                    if (url) {
-                        frame.src = url;
-                        urlInput.value = url;
-                    }
-                }
+            saveSettingsButton.addEventListener('click', saveSettings);
+
+            viewInputs.forEach(input => {
+                input.addEventListener('change', function() {
+                    currentView = this.value;
+                    applyView(currentView);
+                    viewLabels.forEach(label => label.classList.toggle('active', label.htmlFor === this.id));
+                });
             });
 
-            frame.addEventListener('load', function() {
-                const currentUrl = frame.contentWindow.location.href;
-                urlInput.value = currentUrl;
-                const activeTab = document.querySelector('.tab.active');
-                if (activeTab) {
-                    const urlParams = new URLSearchParams(new URL(currentUrl).search);
-                    const title = urlParams.get('title') || 'Untitled';
-                    const icon = urlParams.get('icon') || '';
-                    activeTab.querySelector('.tab-title').textContent = title;
-
-                    // Update favicon for the active tab
-                    let favicon = document.querySelector(`link[rel="icon"]`);
-                    if (favicon) {
-                        favicon.href = icon;
-                    } else {
-                        favicon = document.createElement('link');
-                        favicon.rel = 'icon';
-                        favicon.href = icon;
-                        document.head.appendChild(favicon);
-                    }
-                }
-            });
-
-            function updateIframeLinks() {
-                const frameDocument = frame.contentDocument || frame.contentWindow.document;
-                const script = document.createElement('script');
-                script.textContent = `
-                    document.addEventListener('click', function(event) {
-                        if (event.target.tagName === 'A' && event.target.href) {
-                            event.preventDefault();
-                            const url = event.target.href;
-                            window.top.document.querySelector('#browser-frame').src = 'https://mirror-browser.netlify.app/page/?url=' + encodeURIComponent(url);
-                        }
-                    }, true);
-                `;
-                frameDocument.head.appendChild(script);
-            }
-
-            frame.addEventListener('load', updateIframeLinks);
+            loadTabsFromCookie();
+            loadSettings();
         });
     </script>
 </body>
