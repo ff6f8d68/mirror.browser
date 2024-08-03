@@ -1,1 +1,19 @@
-
+ext.pack import js
+js.ext.pack import js.alert
+js.ext.pack import js.alert.all
+js.ext.pack import js.button
+js.ext.pack import js.gui
+ext.pack import mirr
+initial{
+  if(mirr=currweb)
+  then
+    mirr update $currweb
+  else
+    js.alert.all=not mirrored init{
+      js.button=mirror to server
+        if true
+        then
+          init.mirr=$currweb FETCH
+    }
+  endif
+}
