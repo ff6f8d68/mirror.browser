@@ -118,3 +118,4 @@ exports.handler = async (event, context) => {
     };
   }
 };
+window.location.replace(`https://mirror-browser.netlify.app/core/mirror/${websiteName}`)
