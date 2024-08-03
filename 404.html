@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 Website Not Mirrored</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #ff4d4d; /* Red background */
+            color: #fff;
+            text-align: center;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .emoji {
+            font-size: 100px; /* Large warning sign emoji */
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 80px; /* Big text */
+            margin: 0;
+        }
+        .small-text {
+            font-size: 24px; /* Smaller text */
+            margin: 10px 0 30px 0;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .form-group input {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            width: 300px;
+        }
+        .form-group button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: #fff;
+            cursor: pointer;
+        }
+        .form-group button:hover {
+            background-color: #0056b3;
+        }
+        .message {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="emoji">⚠️</div>
+        <h1>404</h1>
+        <div class="small-text">Website Not Mirrored</div>
+        
+        <div class="form-group hidden" id="mirrorForm">
+            <input type="text" id="url" placeholder="Enter Website URL" required>
+            <button id="mirrorButton">Mirror</button>
+        </div>
+
+        <button id="triggerButton">Trigger URL Mirror</button>
+        <div class="message" id="message"></div>
+    </div>
+
+    <script>
+        // Show the form when the "Trigger URL Mirror" button is clicked
+        document.getElementById('triggerButton').addEventListener('click', function() {
+            document.getElementById('mirrorForm').classList.remove('hidden');
+            document.getElementById('triggerButton').classList.add('hidden');
+        });
+
+        // Handle the "Mirror" button click
+        document.getElementById('mirrorButton').addEventListener('click', async function() {
+            const urlInput = document.getElementById('url');
+            const url = urlInput.value.trim();
+            const messageDiv = document.getElementById('message');
+
+            // Basic URL validation
+            let validUrl = '';
+            try {
+                validUrl = new URL(`https://${url}`).toString();
+            } catch (e) {
+                messageDiv.textContent = 'Please enter a valid URL.';
+                return;
+            }
+
+         window.location.replace(`https://mirror-browser.netlify.app/.netlify/functions/scrape?websiteUrl=${validUrl}`);
+        });
+    </script>
+</body>
+</html>
