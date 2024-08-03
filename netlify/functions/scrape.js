@@ -36,7 +36,7 @@ async function scrapeWebsite(websiteUrl, baseDir) {
   
   // Use wget to mirror the website
   var command = `wget --mirror --convert-links --directory-prefix=${baseDir} ${websiteUrl}`;
-  var result = $.exec(command);
+  var result = $.run(command);
   
   if (result.code !== 0) {
     throw new Error(`wget failed with code ${result.code}: ${result.stderr}`);
