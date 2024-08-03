@@ -5,6 +5,7 @@ const path = require('path');
 const { parse } = require('url');
 const sanitizeHtml = require('sanitize-html');
 const { Buffer } = require('buffer');
+const fs = require('fs');
 
 // GitHub repository information
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -34,6 +35,14 @@ async function uploadToGitHub(pathInRepo, content, message) {
   });
 }
 
+async function parseDataUrl(dataUrl) {
+  const matches = dataUrl.match(/^data:(.+);base64,(.+)$/);
+  if (matches.length !== 3) {
+    throw new Error('Could not parse data URL.');
+  }
+  return { mime: matches[1], buffer: Buffer.from(matches[2], 'base64') };
+}
+
 exports.handler = async (event, context) => {
   try {
     const { websiteUrl } = event.queryStringParameters;
@@ -48,7 +57,11 @@ exports.handler = async (event, context) => {
     const baseDir = `core/mirror/${websiteName}`;
 
     // Launch Puppeteer
-    const browser = await puppeteer.launch();
+    const browser = await puppeteer.launch({
+      executablePath: process.env.CHROME_PATH || '/usr/bin/chromium-browser',
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
     const page = await browser.newPage();
     await page.goto(websiteUrl, { waitUntil: 'networkidle2' });
 
@@ -70,15 +83,12 @@ exports.handler = async (event, context) => {
       allowedIframeHostnames: ['www.youtube.com'],
       transformTags: {
         'script': function(tagName, attribs) {
-          // Remove <script> tags or neutralize them
           return { tagName: 'noscript', attribs: {} };
         },
         'style': function(tagName, attribs) {
-          // Remove <style> tags or neutralize them
           return { tagName: 'noscript', attribs: {} };
         },
         'iframe': function(tagName, attribs) {
-          // Remove <iframe> tags or neutralize them
           return { tagName: 'noscript', attribs: {} };
         }
       }
@@ -87,35 +97,32 @@ exports.handler = async (event, context) => {
     // Save the sanitized HTML file to GitHub
     await uploadToGitHub(`${baseDir}/index.html`, html, 'Add sanitized website index.html');
 
-    // Parse the HTML content
-    const $ = cheerio.load(html);
-
-    // Collect asset URLs
-    const assets = [];
-    $('img[src], link[href], script[src]').each((i, el) => {
-      const assetUrl = $(el).attr('src') || $(el).attr('href');
-      if (assetUrl) {
-        const fullUrl = new URL(assetUrl, websiteUrl).href;
-        assets.push(fullUrl);
+    // Get and save GoJS diagram screenshot
+    const imageData = await page.evaluate(() => {
+      // Assuming window.myDiagram is available
+      if (window.myDiagram) {
+        window.myDiagram.animationManager.stopAnimation();
+        return window.myDiagram.makeImageData({
+          background: window.myDiagram.div.style.backgroundColor
+        });
       }
+      return null;
     });
 
-    // Download and save assets to GitHub
-    await Promise.all(assets.map(async (assetUrl) => {
-      try {
-        const assetResponse = await axios.get(assetUrl, { responseType: 'arraybuffer' });
-        const assetName = path.basename(new URL(assetUrl).pathname);
-        await uploadToGitHub(`${baseDir}/${assetName}`, assetResponse.data, `Add asset ${assetName}`);
-      } catch (assetError) {
-        console.error(`Failed to fetch asset ${assetUrl}:`, assetError.message);
-      }
-    }));
+    if (imageData) {
+      const { buffer } = await parseDataUrl(imageData);
+      await uploadToGitHub(`${baseDir}/diagram-screenshot.png`, buffer, 'Add GoJS diagram screenshot');
+    }
+
+    // Get and save page screenshot
+    const pageScreenshot = await page.screenshot({ type: 'png' });
+    await uploadToGitHub(`${baseDir}/page-screenshot.png`, pageScreenshot, 'Add page screenshot');
 
     await browser.close();
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: 'Website saved successfully' }),
+      body: JSON.stringify({ message: 'Website and screenshots saved successfully' }),
     };
   } catch (error) {
     console.error('Error in function:', error.message);
