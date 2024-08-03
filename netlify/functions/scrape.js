@@ -43,7 +43,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    const websiteName = parse(websiteUrl).hostname.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const websiteName = parse(websiteUrl).hostname.replace(/[^a-z0-9 .]/gi, '_').toLowerCase();
     const baseDir = `core/mirror/${websiteName}`;
 
     // Fetch the website content
