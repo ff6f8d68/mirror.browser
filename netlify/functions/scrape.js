@@ -1,9 +1,8 @@
-const puppeteer = require('puppeteer');
+const { Builder, By } = require('selenium-webdriver');
 const axios = require('axios');
 const path = require('path');
+const fs = require('fs');
 const { parse } = require('url');
-const { Buffer } = require('buffer');
-const sanitizeHtml = require('sanitize-html');
 
 // GitHub repository information
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
@@ -31,6 +30,91 @@ async function uploadToGitHub(pathInRepo, content, message) {
   });
 }
 
+// Function to save HTML content and assets locally
+async function saveContent(baseDir, fileName, content) {
+  const filePath = path.join(baseDir, fileName);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content);
+}
+
+// Function to fetch and save assets
+async function saveAssets(driver, websiteUrl, baseDir) {
+  const assets = new Set();
+
+  const assetElements = await driver.findElements(By.css('img[src], link[href], script[src], iframe[src], audio[src], video[src], embed[src], source[src]'));
+  for (const assetElement of assetElements) {
+    const url = await assetElement.getAttribute('src') || await assetElement.getAttribute('href');
+    if (url && url.startsWith('http')) {
+      assets.add(new URL(url, websiteUrl).href);
+    }
+  }
+
+  await Promise.all(
+    Array.from(assets).map(async (assetUrl) => {
+      try {
+        const assetResponse = await axios.get(assetUrl, { responseType: 'arraybuffer' });
+        const assetName = path.basename(new URL(assetUrl).pathname);
+        await saveContent(baseDir, assetName, assetResponse.data);
+      } catch (assetError) {
+        console.error(`Failed to fetch asset ${assetUrl}:`, assetError.message);
+      }
+    })
+  );
+}
+
+// Function to scrape pages recursively
+async function scrapePage(driver, websiteUrl, baseDir, visited) {
+  if (visited.has(websiteUrl)) {
+    return;
+  }
+  visited.add(websiteUrl);
+
+  await driver.get(websiteUrl);
+  await driver.sleep(3000); // Wait for the page to load completely
+
+  let html = await driver.getPageSource();
+
+  const pageName = websiteUrl.replace(/[^a-z0-9 .]/gi, '_').toLowerCase() + '.html';
+  await saveContent(baseDir, pageName, html);
+
+  await saveAssets(driver, websiteUrl, baseDir);
+
+  const links = await driver.findElements(By.css('a[href]'));
+  for (const link of links) {
+    const href = await link.getAttribute('href');
+    if (href && href.startsWith(websiteUrl)) {
+      await scrapePage(driver, href, baseDir, visited);
+    }
+  }
+}
+
+async function scrapeWebsite(websiteUrl, baseDir) {
+  let driver = await new Builder().forBrowser('chrome').build();
+
+  try {
+    const visited = new Set();
+    await scrapePage(driver, websiteUrl, baseDir, visited);
+  } finally {
+    await driver.quit();
+  }
+}
+
+async function uploadFolderToGitHub(baseDir, baseRepoPath) {
+  const files = fs.readdirSync(baseDir, { withFileTypes: true });
+
+  for (const file of files) {
+    const fullPath = path.join(baseDir, file.name);
+    const repoPath = path.join(baseRepoPath, file.name);
+
+    if (file.isDirectory()) {
+      await uploadFolderToGitHub(fullPath, repoPath);
+    } else {
+      const content = fs.readFileSync(fullPath);
+      await uploadToGitHub(repoPath, content, `Add ${repoPath}`);
+    }
+  }
+}
+
 exports.handler = async (event, context) => {
   try {
     const { websiteUrl } = event.queryStringParameters;
@@ -42,53 +126,13 @@ exports.handler = async (event, context) => {
     }
 
     const websiteName = parse(websiteUrl).hostname.replace(/[^a-z0-9 .]/gi, '_').toLowerCase();
-    const baseDir = `core/mirror/${websiteName}`;
+    const baseDir = path.join(__dirname, 'core', 'mirror', websiteName);
 
-    // Launch Puppeteer
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
-    const page = await browser.newPage();
-    await page.goto(websiteUrl, { waitUntil: 'networkidle2' });
+    // Clear the base directory
+    fs.rmSync(baseDir, { recursive: true, force: true });
 
-    // Get page content
-    let html = await page.content();
-
-    // Sanitize HTML content
-    html = sanitizeHtml(html, {
-      allowedTags: ['b', 'i', 'em', 'strong', 'a', 'p', 'img', 'br', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'div', 'table', 'thead', 'tbody', 'tr', 'th', 'td'],
-      allowedAttributes: {
-        'a': ['href', 'name', 'target'],
-        'img': ['src', 'alt', 'width', 'height'],
-        'span': ['style'],
-        'div': ['style'],
-        'table': ['style'],
-        'th': ['style'],
-        'td': ['style'],
-      },
-      allowedIframeHostnames: ['www.youtube.com'],
-      transformTags: {
-        'script': function(tagName, attribs) {
-          return { tagName: 'noscript', attribs: {} };
-        },
-        'style': function(tagName, attribs) {
-          return { tagName: 'noscript', attribs: {} };
-        },
-        'iframe': function(tagName, attribs) {
-          return { tagName: 'noscript', attribs: {} };
-        }
-      }
-    });
-
-    // Save the sanitized HTML file to GitHub
-    await uploadToGitHub(`${baseDir}/index.html`, html, 'Add sanitized website index.html');
-
-    // Take a screenshot of the page
-    const pageScreenshot = await page.screenshot({ type: 'png' });
-    await uploadToGitHub(`${baseDir}/page-screenshot.png`, pageScreenshot, 'Add page screenshot');
-
-    await browser.close();
+    await scrapeWebsite(websiteUrl, baseDir);
+    await uploadFolderToGitHub(baseDir, `core/mirror/${websiteName}`);
 
     return {
       statusCode: 200,
