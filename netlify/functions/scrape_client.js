@@ -1,8 +1,8 @@
-var $ = require('gee-shell');
+var { exec } = require('child_process');
 var path = require('path');
-var { parse } = require('url');
 var AdmZip = require('adm-zip');
 var fs = require('fs');
+var { parse } = require('url');
 
 // Function to create a ZIP file from the directory
 async function createZip(baseDir, outputFilePath) {
@@ -11,17 +11,23 @@ async function createZip(baseDir, outputFilePath) {
   zip.writeZip(outputFilePath);
 }
 
+async function runBashScript(websiteUrl, baseDir) {
+  return new Promise((resolve, reject) => {
+    var scriptPath = path.join(__dirname, 'scrape.sh');
+    var command = `bash ${scriptPath} ${websiteUrl} ${baseDir}`;
+    
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        return reject(new Error(`Bash script failed: ${stderr}`));
+      }
+      resolve(stdout);
+    });
+  });
+}
+
 async function scrapeWebsite(websiteUrl, baseDir) {
   // Ensure the base directory exists
-  $.mkdir('-p', baseDir);
-
-  // Use wget to mirror the website
-  var command = `wget --mirror --convert-links --directory-prefix=${baseDir} ${websiteUrl}`;
-  var result = $.run(command);
-  
-  if (result.code !== 0) {
-    throw new Error(`wget failed with code ${result.code}: ${result.stderr}`);
-  }
+  await runBashScript(websiteUrl, baseDir);
 }
 
 exports.handler = async function(event, context) {
@@ -39,7 +45,7 @@ exports.handler = async function(event, context) {
     var outputFilePath = path.join(__dirname, 'core', 'mirror', `${websiteName}.zip`);
 
     // Clear the base directory
-    $.rm('-rf', baseDir);
+    fs.rmdirSync(baseDir, { recursive: true });
 
     await scrapeWebsite(websiteUrl, baseDir);
     await createZip(baseDir, outputFilePath);
