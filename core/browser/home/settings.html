@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mirror Browser Settings</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .view-switch {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .view-switch input {
+            display: none;
+        }
+
+        .view-switch label {
+            cursor: pointer;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin: 0 5px;
+        }
+
+        .view-switch label.active {
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        #save-settings {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        #save-settings:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h2>Settings</h2>
+    <label>
+        Default URL:
+        <input type="text" id="default-url-input">
+    </label>
+    <div class="view-switch">
+        <label for="desktop-view" id="desktop-view" class="active">Desktop</label>
+        <label for="phone-view" id="phone-view">Phone</label>
+        <input type="radio" id="desktop-view" name="view" value="desktop">
+        <input type="radio" id="phone-view" name="view" value="phone">
+    </div>
+    <button id="save-settings">Save Settings</button>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const defaultUrlInput = document.getElementById('default-url-input');
+            const saveSettingsButton = document.getElementById('save-settings');
+            const viewLabels = document.querySelectorAll('.view-switch label');
+            const viewInputs = document.querySelectorAll('.view-switch input');
+            let currentView = 'desktop';
+
+            function loadSettings() {
+                fetch('/path/to/settings.json')
+                    .then(response => response.json())
+                    .then(settings => {
+                        defaultUrlInput.value = settings.defaultUrl || '';
+                        const view = settings.view || 'desktop';
+                        document.getElementById(view + '-view').classList.add('active');
+                        document.querySelector(`input[value="${view}"]`).checked = true;
+                        currentView = view;
+                    });
+            }
+
+            function saveSettings() {
+                const settings = {
+                    defaultUrl: defaultUrlInput.value,
+                    view: currentView
+                };
+                fetch('/path/to/save-settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                })
+                .then(response => response.json())
+                .then(data => alert('Settings saved successfully!'))
+                .catch(error => console.error('Error saving settings:', error));
+            }
+
+            viewInputs.forEach(input => {
+                input.addEventListener('change', function() {
+                    currentView = this.value;
+                    viewLabels.forEach(label => label.classList.toggle('active', label.htmlFor === this.id));
+                });
+            });
+
+            saveSettingsButton.addEventListener('click', saveSettings);
+
+            loadSettings();
+        });
+    </script>
+</body>
+</html>
