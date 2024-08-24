@@ -1,4 +1,4 @@
-Certainly! Here’s a step-by-step guide with complete code examples for creating a simple bootloader and a minimal Linux system that runs a shell script.
+step-by-step guide with complete code examples for creating a simple bootloader and a minimal Linux system that runs a shell script.
 
 Overview
 Write a Bootloader: A simple bootloader in Assembly that loads the kernel and transfers control to it.
