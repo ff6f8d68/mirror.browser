@@ -1,19 +1,17 @@
-ext.pack import js
-js.ext.pack import js.alert
-js.ext.pack import js.alert.all
-js.ext.pack import js.button
-js.ext.pack import js.gui
-ext.pack import mirr
+# init.workdir <prefered working directory>
+ext.pack import <internal package>
+ext.pack import <other programming langue>
+js.ext.pack import <other programming langue>.<package>
 initial{
-  if(mirr=currweb)
+  if(<variable or number><math symbol (=, <, >, =<, =>)><variable or number>)
   then
-    mirr update $currweb
+    <language or int (for internal packages)>.<package> <action>
   else
-    js.alert.all=not mirrored init{
-      js.button=mirror to server
+    <language or int (for internal packages)>.<package> <action> init{
+      <language or int (for internal packages)>.<package> <action>=<value>
         if true
         then
-          init.mirr=$currweb FETCH
+          <language or int (for internal packages)>.<package> <action>
     }
   endif
 }
